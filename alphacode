@@ -1,0 +1,63 @@
+import pandas as pd
+import numpy as np
+import cv2
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from sklearn.preprocessing import LabelEncoder
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load the dataset
+data = pd.read_csv('ham10000_metadata.csv')
+
+# Function to load and preprocess images
+def load_and_preprocess_image(image_path):
+    img = cv2.imread(image_path)
+    img = cv2.resize(img, (100, 100))  # Resize to 100x100
+    return img.flatten()  # Flatten to 1D array
+
+# Load images and labels
+X = []
+y = []
+
+# Make sure to adjust this path to where your images are located
+image_dir = 'ham10000/HAM10000_images_part_1'
+
+for index, row in data.iterrows():
+    img_path = os.path.join(image_dir, f"{row['image_id']}.jpg")  # Adjust path as necessary
+    img = load_and_preprocess_image(img_path)
+    X.append(img)
+    y.append(row['dx'])  # Diagnosis label
+
+# Convert to numpy arrays
+X = np.array(X)
+y = np.array(y)
+
+# Encode labels
+le = LabelEncoder()
+y_encoded = le.fit_transform(y)
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+
+# Create and train the Random Forest model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Predict on the test set
+y_pred = model.predict(X_test)
+
+# Evaluate the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred, target_names=le.classes_))
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(10, 7))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=le.classes_, yticklabels=le.classes_)
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.title('Confusion Matrix')
+plt.show()
